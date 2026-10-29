@@ -1,0 +1,8 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    { "collectionGroup": "events", "fieldPath": "expireAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "members", "fieldPath": "expireAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "points", "fieldPath": "expireAt", "ttl": true, "indexes": [] }
+  ]
+}

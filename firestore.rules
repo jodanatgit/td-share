@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Signed in with a confirmed @totaldigital.se address (email-link sign-in verifies the address)
+    function isTD() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower().matches('.*@totaldigital[.]se$');
+    }
+
+    // The signer's user name: firstname, or firstname.lastname for people in FULL_NAME_USERS (src/auth.ts)
+    function isMe(name) {
+      return name in [
+        request.auth.token.email.lower().split('@')[0],
+        request.auth.token.email.lower().split('@')[0].split('[.]')[0]
+      ];
+    }
+
+    function event(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data;
+    }
+
+    function isRunning(eventId) {
+      return request.time < event(eventId).endsAt;
+    }
+
+    function isPosition(d) {
+      return d.lat is number && d.lat >= -90 && d.lat <= 90
+        && d.lng is number && d.lng >= -180 && d.lng <= 180
+        && d.accuracy is number && d.accuracy >= 0;
+    }
+
+    // An event (workshop, conference...) people can share their position in. Runs from creation to endsAt,
+    // at most three days. The creator can rename it or end it early, never extend it.
+    match /events/{eventId} {
+      allow read: if isTD();
+      allow create: if isTD()
+        && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt', 'endsAt', 'expireAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && isMe(request.resource.data.createdBy)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.endsAt is timestamp
+        && request.resource.data.endsAt > request.time
+        && request.resource.data.endsAt <= request.time + duration.value(73, 'h')
+        && request.resource.data.expireAt == request.resource.data.endsAt;
+      allow update: if isTD()
+        && isMe(resource.data.createdBy)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'endsAt', 'expireAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.endsAt is timestamp
+        && request.resource.data.endsAt <= resource.data.endsAt
+        && request.resource.data.expireAt == request.resource.data.endsAt;
+      allow delete: if isTD() && isMe(resource.data.createdBy);
+
+      // Each sharer's latest position, document id = user name. Readable only while the event runs.
+      match /members/{userName} {
+        allow read: if isTD() && isRunning(eventId);
+        allow create, update: if isTD()
+          && isMe(userName)
+          && isRunning(eventId)
+          && request.resource.data.keys().hasOnly(['userName', 'lat', 'lng', 'accuracy', 'updatedAt', 'expireAt'])
+          && request.resource.data.userName == userName
+          && isPosition(request.resource.data)
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.expireAt == event(eventId).endsAt;
+        allow delete: if isTD() && (isMe(userName) || isMe(event(eventId).createdBy));
+      }
+
+      // Everyone's track during the event. Never changed; readable only while the event runs.
+      match /points/{pointId} {
+        allow read: if isTD() && isRunning(eventId);
+        allow create: if isTD()
+          && isRunning(eventId)
+          && request.resource.data.keys().hasOnly(['userName', 'lat', 'lng', 'accuracy', 'at', 'expireAt'])
+          && isMe(request.resource.data.userName)
+          && isPosition(request.resource.data)
+          && request.resource.data.at == request.time
+          && request.resource.data.expireAt == event(eventId).endsAt;
+        allow update: if false;
+        allow delete: if isTD() && (isMe(resource.data.userName) || isMe(event(eventId).createdBy));
+      }
+    }
+  }
+}

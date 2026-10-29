@@ -1,0 +1,88 @@
+.event-list {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
+}
+
+.event-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.event-list-header h1 {
+  margin: 8px 0;
+  font-size: 26px;
+}
+
+.event-list-intro {
+  margin: 0 0 8px;
+  line-height: 1.45;
+  color: #44505c;
+}
+
+.event-list h2 {
+  margin: 24px 0 10px;
+  font-size: 17px;
+}
+
+.event-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-cards button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.event-cards strong {
+  font-size: 17px;
+}
+
+.event-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-form input {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 16px; /* 16px keeps iOS from zooming in */
+}
+
+.durations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.durations button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.durations button.active {
+  border-color: var(--accent);
+  background: #fdeee2;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
