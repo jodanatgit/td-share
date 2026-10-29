@@ -30,6 +30,21 @@ service cloud.firestore {
         && d.accuracy is number && d.accuracy >= 0;
     }
 
+    // My opt-in: which running event I share my position in (one at a time). The OwnTracks endpoint
+    // (functions/index.js) only stores positions while this exists. Its lastPoint field is server-owned.
+    match /sharing/{userName} {
+      allow read, delete: if isTD() && isMe(userName);
+      allow create, update: if isTD()
+        && isMe(userName)
+        && request.resource.data.keys().hasOnly(['eventId', 'since'])
+        && request.resource.data.eventId is string
+        && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
+        && isRunning(request.resource.data.eventId)
+        && request.resource.data.since == request.time;
+    }
+
+    // OwnTracks passwords (hashed) live in owntracks_tokens/{userName}: server only, no rule = no access.
+
     // An event (workshop, conference...) people can share their position in. Runs from creation to endsAt,
     // at most three days. The creator can rename it or end it early, never extend it.
     match /events/{eventId} {

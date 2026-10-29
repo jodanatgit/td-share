@@ -67,7 +67,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; n: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [ending, setEnding] = useState(false);
-  const { sharing, setSharing, status, position } = useLocationSharing(event ?? null, userName);
+  const { sharing, loaded, deviceGps, setDeviceGps, setSharing, status, position } = useLocationSharing(event ?? null, userName);
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 15000);
@@ -182,6 +182,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
 
   const statusText: Record<typeof status, string> = {
     off: 'Du delar inte din position',
+    remote: 'Du delar din position via OwnTracks eller en annan enhet',
     starting: 'Hämtar din position…',
     on: position ? `Du delar din position (±${position.accuracy} m)` : 'Du delar din position',
     denied: 'Platsåtkomst nekad. Tillåt plats för sidan i webbläsarens inställningar.',
@@ -242,11 +243,23 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
       <section className="event-sheet">
         <div className="share-row">
           <span className={`status status-${status}`}>{statusText[status]}</span>
-          <button className={sharing ? 'stop' : 'primary'} onClick={() => setSharing(!sharing)}>
+          <button className={sharing ? 'stop' : 'primary'} onClick={() => setSharing(!sharing)} disabled={!loaded}>
             {sharing ? 'Sluta dela' : 'Dela min position'}
           </button>
         </div>
-        {sharing && <p className="hint">Ha skärmen på och sidan öppen, annars pausar telefonen GPS:en.</p>}
+        {sharing && deviceGps && (
+          <p className="hint">
+            Webbläsaren pausar GPS:en när skärmen släcks. <a href="#/owntracks">Ställ in OwnTracks</a> för att dela med
+            skärmen av.
+          </p>
+        )}
+        {sharing && !deviceGps && (
+          <p className="hint">
+            <button className="link-btn" onClick={() => setDeviceGps(true)}>
+              Använd också den här enhetens GPS
+            </button>
+          </p>
+        )}
 
         <ul className="people">
           {sortedMembers.length === 0 && <li className="muted">Ingen delar sin position ännu.</li>}

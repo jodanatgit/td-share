@@ -1,0 +1,68 @@
+.ot {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
+  line-height: 1.45;
+}
+
+.ot h1 {
+  margin: 12px 0 8px;
+  font-size: 24px;
+}
+
+.ot-steps {
+  margin: 20px 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ot-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.ot-steps span {
+  color: #44505c;
+}
+
+.ot-open {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.ot-manual {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.ot-manual summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ot-manual dl {
+  margin: 8px 0;
+}
+
+.ot-manual dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ot-manual dd {
+  margin: 0 0 8px;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+  user-select: all;
+}
+
+.ot-battery {
+  margin-top: 20px;
+  font-size: 14px;
+}

@@ -131,6 +131,14 @@ const EventList = ({ userName, onOpen }: EventListProps) => {
         </form>
       </section>
 
+      <section>
+        <h2>Dela med skärmen av</h2>
+        <p className="muted">
+          Ställ in appen OwnTracks en gång, så skickar telefonen din position även när skärmen är släckt.{' '}
+          <a href="#/owntracks">Ställ in OwnTracks</a>
+        </p>
+      </section>
+
       {error && <p className="error">{error}</p>}
     </div>
   );

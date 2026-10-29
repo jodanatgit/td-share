@@ -5,18 +5,23 @@ import { isAllowedUser, nameFromEmail } from './auth';
 import SignIn from './components/SignIn';
 import EventList from './components/EventList';
 import EventView from './components/EventView';
+import OwnTracksSetup from './components/OwnTracksSetup';
 
-// The open event lives in the address (#/e/<id>), so a link to it can be shared in Teams
-const eventFromHash = () => window.location.hash.match(/^#\/e\/([\w-]+)$/)?.[1] ?? null;
+// The open page lives in the address: #/e/<id> is an event (a link to it can be shared in Teams),
+// #/owntracks the background-sharing setup
+const routeFromHash = () => {
+  if (window.location.hash === '#/owntracks') return { page: 'owntracks' as const, eventId: null };
+  return { page: 'main' as const, eventId: window.location.hash.match(/^#\/e\/([\w-]+)$/)?.[1] ?? null };
+};
 
 // Only signed-in @totaldigital.se users get past this gate; nothing below it touches Firestore before then
 function App() {
   const [authUser, setAuthUser] = useState<User | null | undefined>(undefined);
-  const [eventId, setEventId] = useState(eventFromHash);
+  const [route, setRoute] = useState(routeFromHash);
 
   useEffect(() => onAuthStateChanged(auth, setAuthUser), []);
   useEffect(() => {
-    const onHash = () => setEventId(eventFromHash());
+    const onHash = () => setRoute(routeFromHash());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -28,8 +33,9 @@ function App() {
   const open = (id: string | null) => {
     window.location.hash = id ? `/e/${id}` : '';
   };
-  return eventId ? (
-    <EventView key={eventId} eventId={eventId} userName={userName} onBack={() => open(null)} />
+  if (route.page === 'owntracks') return <OwnTracksSetup onBack={() => open(null)} />;
+  return route.eventId ? (
+    <EventView key={route.eventId} eventId={route.eventId} userName={userName} onBack={() => open(null)} />
   ) : (
     <EventList userName={userName} onOpen={open} />
   );
