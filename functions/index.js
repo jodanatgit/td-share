@@ -8,6 +8,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 // /api on Firebase Hosting (firebase.json):
 //   POST /api/owntracks/token  signed-in user (Firebase ID token) -> a new personal OwnTracks password
 //   POST /api/owntracks        the OwnTracks app (HTTP mode, basic auth user name + that password) -> position
+// Arrivals at places and routes: arrivals.js (Firestore trigger on positions)
 //
 // OwnTracks keeps sending in the background with the screen off. A position is only stored while the person has
 // opted in to a running event (sharing/{userName}, set from the app); everything else is dropped.
@@ -133,3 +134,5 @@ export const api = onRequest({ region: 'europe-west1', maxInstances: 5 }, async 
     res.status(500).json([]);
   }
 });
+
+export { onMemberWritten } from './arrivals.js';

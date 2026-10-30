@@ -24,7 +24,7 @@ import { parseGpx, toLines } from '../gpx';
 import MapLayers from './MapLayers';
 import PlaceForm from './PlaceForm';
 import InAppBrowserNotice from './InAppBrowserNotice';
-import type { Member, Place, Route, TdEvent, TrackPoint } from '../types';
+import type { Arrival, Member, Place, Route, TdEvent, TrackPoint } from '../types';
 import './EventView.css';
 
 interface EventViewProps {
@@ -98,6 +98,17 @@ function FocusOn({ focus }: { focus: Focus }) {
   return null;
 }
 
+// While drawing a route, every tap on the map adds a point
+function DrawPoints({ onAdd }: { onAdd: (p: [number, number]) => void }) {
+  useMapEvents({ click: (e) => onAdd([e.latlng.lat, e.latlng.lng]) });
+  return null;
+}
+
+const arrivalText = (a: Arrival) =>
+  a.kind === 'place' ? `${displayName(a.userName)} kom fram till ${a.targetName}` : `${displayName(a.userName)} nådde rutten ${a.targetName}`;
+
+const clock = (d: Date | null) => (d ? d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '');
+
 // While adding a place, the next tap on the map picks its position
 function PickPosition({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   useMapEvents({ click: (e) => onPick(e.latlng.lat, e.latlng.lng) });
@@ -116,10 +127,14 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
   const [ending, setEnding] = useState(false);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
+  const [drawing, setDrawing] = useState<[number, number][] | null>(null); // points of a route being drawn
+  const [namingRoute, setNamingRoute] = useState(false);
+  const [arrivals, setArrivals] = useState<Arrival[]>([]);
   const [editing, setEditing] = useState<Place | null>(null);
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const arrivalsLoaded = useRef(false);
   const { sharing, loaded, deviceGps, setDeviceGps, setSharing, status, position } = useLocationSharing(event ?? null, userName);
 
   useEffect(() => {
@@ -170,6 +185,30 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         query(collection(db, `${base}/places`), orderBy('createdAt')),
         (snap) => setPlaces(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Place, 'id'>) }))),
         (err) => console.error('places listener failed:', err)
+      ),
+      onSnapshot(
+        query(collection(db, `${base}/arrivals`), orderBy('at', 'desc'), limit(30)),
+        (snap) => {
+          setArrivals(
+            snap.docs.map((d) => {
+              const x = d.data();
+              return { id: d.id, userName: x.userName, kind: x.kind, targetName: x.targetName, at: x.at?.toDate() ?? null };
+            })
+          );
+          // Pop up arrivals that happen while the map is open (not the ones already there when it opened)
+          if (!arrivalsLoaded.current) {
+            arrivalsLoaded.current = true;
+            return;
+          }
+          snap
+            .docChanges()
+            .filter((c) => c.type === 'added')
+            .forEach((c) => {
+              const x = c.doc.data();
+              flash(arrivalText({ id: c.doc.id, userName: x.userName, kind: x.kind, targetName: x.targetName, at: null }));
+            });
+        },
+        (err) => console.error('arrivals listener failed:', err)
       ),
       onSnapshot(
         query(collection(db, `${base}/routes`), orderBy('createdAt')),
@@ -275,6 +314,22 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
     }
   };
 
+  const saveDrawnRoute = async (name: string) => {
+    if (!drawing || drawing.length < 2 || !event) return;
+    await addDoc(collection(db, `events/${eventId}/routes`), {
+      name,
+      color: ROUTE_COLORS[routes.length % ROUTE_COLORS.length],
+      coords: drawing.flatMap(([lat, lng]) => [Math.round(lat * 1e6) / 1e6, Math.round(lng * 1e6) / 1e6]),
+      breaks: [0],
+      waypoints: [],
+      createdBy: userName,
+      createdAt: serverTimestamp(),
+      expireAt: event.endsAt
+    });
+    setNamingRoute(false);
+    setDrawing(null);
+  };
+
   const removeRoute = async (r: Route) => {
     if (!window.confirm(`Ta bort rutten "${r.name}"?`)) return;
     await deleteDoc(doc(db, `events/${eventId}/routes`, r.id)).catch((err) => {
@@ -289,7 +344,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
     setEnding(true);
     try {
       setSharing(false);
-      for (const sub of ['points', 'members', 'places', 'routes']) {
+      for (const sub of ['points', 'members', 'places', 'routes', 'arrivals']) {
         const snap = await getDocs(collection(db, `events/${eventId}/${sub}`));
         const refs: DocumentReference[] = snap.docs.map((d) => d.ref);
         for (let i = 0; i < refs.length; i += 400) {
@@ -346,7 +401,21 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         </button>
       </header>
 
-      <div className={`event-map-wrap${adding ? ' adding' : ''}`}>
+      <div className={`event-map-wrap${adding || drawing ? ' adding' : ''}`}>
+        {drawing && !namingRoute && (
+          <div className="map-banner" role="status">
+            <span>{drawing.length ? `${drawing.length} punkter` : 'Tryck på kartan för att rita'}</span>
+            <button className="link-btn" onClick={() => setDrawing(drawing.slice(0, -1))} disabled={!drawing.length}>
+              Ångra
+            </button>
+            <button className="link-btn" onClick={() => setNamingRoute(true)} disabled={drawing.length < 2}>
+              Klar
+            </button>
+            <button className="link-btn" onClick={() => setDrawing(null)}>
+              Avbryt
+            </button>
+          </div>
+        )}
         {adding && (
           <div className="map-banner" role="status">
             <span>Tryck på kartan där platsen ska vara</span>
@@ -447,6 +516,13 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
             />
           )}
           {draft && <Marker position={[draft.lat, draft.lng]} icon={placeIcon} />}
+          {drawing && !namingRoute && <DrawPoints onAdd={(p) => setDrawing([...drawing, p])} />}
+          {drawing && drawing.length > 1 && (
+            <Polyline positions={drawing} pathOptions={{ color: ROUTE_COLORS[routes.length % ROUTE_COLORS.length], weight: 5, dashArray: '10 8' }} />
+          )}
+          {drawing?.map((p, i) => (
+            <CircleMarker key={i} center={p} radius={5} pathOptions={{ color: '#fff', weight: 2, fillColor: '#14202b', fillOpacity: 1 }} />
+          ))}
         </MapContainer>
       </div>
 
@@ -473,8 +549,11 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         )}
 
         <div className="tools">
-          <button onClick={() => setAdding(true)} disabled={adding}>
+          <button onClick={() => setAdding(true)} disabled={adding || !!drawing}>
             + Plats
+          </button>
+          <button onClick={() => setDrawing([])} disabled={adding || !!drawing}>
+            Rita rutt
           </button>
           <button onClick={() => fileInput.current?.click()} disabled={uploading}>
             {uploading ? 'Laddar upp…' : '+ GPX-fil'}
@@ -491,6 +570,20 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
             }}
           />
         </div>
+
+        {arrivals.length > 0 && (
+          <>
+            <h3 className="sheet-heading">Händelser</h3>
+            <ul className="arrivals">
+              {arrivals.slice(0, 8).map((a) => (
+                <li key={a.id}>
+                  <span>{arrivalText(a)}</span>
+                  <span className="muted">{clock(a.at)}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
         <h3 className="sheet-heading">Personer</h3>
         <ul className="people">
@@ -558,6 +651,9 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         )}
       </section>
 
+      {namingRoute && (
+        <PlaceForm kind="route" onSave={(name) => saveDrawnRoute(name)} onCancel={() => setNamingRoute(false)} />
+      )}
       {(draft || editing) && (
         <PlaceForm
           initial={editing ? { title: editing.title, info: editing.info } : undefined}

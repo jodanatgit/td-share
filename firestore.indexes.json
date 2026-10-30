@@ -40,6 +40,18 @@
       "collectionGroup": "routes",
       "fieldPath": "waypoints",
       "indexes": []
+    },
+    {
+      "collectionGroup": "arrivals",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "presence",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }

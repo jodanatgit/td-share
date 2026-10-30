@@ -44,3 +44,12 @@ export interface Route {
   waypoints: { lat: number; lng: number; name: string }[];
   createdBy: string;
 }
+
+// "Johan kom fram till PT-PASS" (events/{id}/arrivals, written by functions/arrivals.js)
+export interface Arrival {
+  id: string;
+  userName: string;
+  kind: 'place' | 'route';
+  targetName: string;
+  at: Date | null;
+}

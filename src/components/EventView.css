@@ -310,3 +310,17 @@
   padding: 16px;
   text-align: center;
 }
+
+.arrivals {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.arrivals li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+}

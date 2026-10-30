@@ -125,7 +125,14 @@ service cloud.firestore {
         allow delete: if isTD() && (isMe(resource.data.createdBy) || isMe(event(eventId).createdBy));
       }
 
-      // Uploaded GPX routes (parsed in the browser, src/gpx.ts). Never changed; deleted by uploader or event creator.
+      // "X kom fram till Y": written by the server when someone reaches a place or route (functions/arrivals.js).
+      // What each person is at right now (presence/{userName}) is server only.
+      match /arrivals/{arrivalId} {
+        allow read: if isTD() && isRunning(eventId);
+        allow delete: if isTD() && isMe(event(eventId).createdBy);
+      }
+
+      // Uploaded GPX routes and routes drawn on the map (parsed in the browser, src/gpx.ts). Never changed; deleted by uploader or event creator.
       match /routes/{routeId} {
         allow read: if isTD() && isRunning(eventId);
         allow create: if isTD()
