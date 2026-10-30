@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { signOutUser } from '../auth';
 import { displayName } from '../names';
 import type { TdEvent } from '../types';
+import InAppBrowserNotice from './InAppBrowserNotice';
 import './EventList.css';
 
 interface EventListProps {
@@ -83,6 +84,8 @@ const EventList = ({ userName, onOpen }: EventListProps) => {
           Logga ut {displayName(userName)}
         </button>
       </header>
+
+      <InAppBrowserNotice />
 
       <p className="event-list-intro">
         Se var kollegorna är under en workshop eller konferens. Du delar bara din position när du själv slår på det,

@@ -1,0 +1,28 @@
+.in-app-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #f0b37e;
+  border-radius: 12px;
+  background: #fdeee2;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.in-app-notice strong {
+  font-size: 15px;
+}
+
+.in-app-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.in-app-actions .primary {
+  text-decoration: none;
+}

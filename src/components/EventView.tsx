@@ -23,6 +23,7 @@ import { ago, colorFor, displayName, initials } from '../names';
 import { parseGpx, toLines } from '../gpx';
 import MapLayers from './MapLayers';
 import PlaceForm from './PlaceForm';
+import InAppBrowserNotice from './InAppBrowserNotice';
 import type { Member, Place, Route, TdEvent, TrackPoint } from '../types';
 import './EventView.css';
 
@@ -323,7 +324,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
     remote: 'Du delar din position via OwnTracks eller en annan enhet',
     starting: 'Hämtar din position…',
     on: position ? `Du delar din position (±${position.accuracy} m)` : 'Du delar din position',
-    denied: 'Platsåtkomst nekad. Tillåt plats för sidan i webbläsarens inställningar.',
+    denied: 'Platsåtkomst nekad. Tillåt plats för sidan i webbläsarens inställningar, och använd Safari eller Chrome.',
     unavailable: 'Den här webbläsaren kan inte dela position.',
     error: 'Kunde inte hämta eller dela positionen just nu.'
   };
@@ -450,6 +451,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
       </div>
 
       <section className="event-sheet">
+        <InAppBrowserNotice />
         <div className="share-row">
           <span className={`status status-${status}`}>{statusText[status]}</span>
           <button className={sharing ? 'stop' : 'primary'} onClick={() => setSharing(!sharing)} disabled={!loaded}>
