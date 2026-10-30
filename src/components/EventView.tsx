@@ -54,6 +54,11 @@ const placeIcon = L.divIcon({
   popupAnchor: [0, -36]
 });
 
+// A point of a route being drawn or edited: drag to move, tap to remove
+const vertexIcon = L.divIcon({ className: '', html: '<div class="vertex-marker"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+
+const MAX_EDITABLE_POINTS = 500; // drawn routes are short; long GPX recordings aren't edited point by point
+
 // Plain text with clickable links and kept line breaks
 function Linkified({ text }: { text: string }) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -129,6 +134,8 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
   const [drawing, setDrawing] = useState<[number, number][] | null>(null); // points of a route being drawn
   const [namingRoute, setNamingRoute] = useState(false);
+  const [editingRouteId, setEditingRouteId] = useState<string | null>(null); // set when `drawing` reshapes a saved route
+  const [moving, setMoving] = useState<{ place: Place; lat: number; lng: number } | null>(null);
   const [arrivals, setArrivals] = useState<Arrival[]>([]);
   const [editing, setEditing] = useState<Place | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -244,6 +251,8 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
 
   const isCreator = event?.createdBy === userName;
   const canDelete = (createdBy: string) => createdBy === userName || isCreator;
+  const canEditPlace = canDelete; // the person who added it, or the event creator
+  const busyOnMap = adding || !!drawing || !!moving;
 
   const flash = (text: string) => {
     setNotice(text);
@@ -330,6 +339,51 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
     setDrawing(null);
   };
 
+  const finishDrawing = async () => {
+    if (!drawing || drawing.length < 2) return;
+    if (!editingRouteId) {
+      setNamingRoute(true);
+      return;
+    }
+    try {
+      await updateDoc(doc(db, `events/${eventId}/routes`, editingRouteId), {
+        coords: drawing.flatMap(([lat, lng]) => [Math.round(lat * 1e6) / 1e6, Math.round(lng * 1e6) / 1e6]),
+        breaks: [0]
+      });
+      setDrawing(null);
+      setEditingRouteId(null);
+    } catch (err) {
+      console.error('Could not save route:', err);
+      flash('Kunde inte spara rutten.');
+    }
+  };
+
+  const cancelDrawing = () => {
+    setDrawing(null);
+    setEditingRouteId(null);
+  };
+
+  const editRoute = (r: Route) => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i < r.coords.length; i += 2) pts.push([r.coords[i], r.coords[i + 1]]);
+    setEditingRouteId(r.id);
+    setDrawing(pts);
+    setFocus({ points: pts, n: Date.now() });
+  };
+
+  const canEditRoute = (r: Route) => r.createdBy === userName && r.breaks.length <= 1 && r.coords.length / 2 <= MAX_EDITABLE_POINTS;
+
+  const savePlaceMove = async () => {
+    if (!moving) return;
+    try {
+      await updateDoc(doc(db, `events/${eventId}/places`, moving.place.id), { lat: moving.lat, lng: moving.lng });
+      setMoving(null);
+    } catch (err) {
+      console.error('Could not move place:', err);
+      flash('Kunde inte flytta platsen.');
+    }
+  };
+
   const removeRoute = async (r: Route) => {
     if (!window.confirm(`Ta bort rutten "${r.name}"?`)) return;
     await deleteDoc(doc(db, `events/${eventId}/routes`, r.id)).catch((err) => {
@@ -401,17 +455,34 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         </button>
       </header>
 
-      <div className={`event-map-wrap${adding || drawing ? ' adding' : ''}`}>
+      <div className={`event-map-wrap${busyOnMap ? ' adding' : ''}`}>
         {drawing && !namingRoute && (
           <div className="map-banner" role="status">
-            <span>{drawing.length ? `${drawing.length} punkter` : 'Tryck på kartan för att rita'}</span>
+            <span>
+              {drawing.length
+                ? editingRouteId
+                  ? 'Dra punkterna, tryck på en punkt för att ta bort den'
+                  : `${drawing.length} punkter`
+                : 'Tryck på kartan för att rita'}
+            </span>
             <button className="link-btn" onClick={() => setDrawing(drawing.slice(0, -1))} disabled={!drawing.length}>
               Ångra
             </button>
-            <button className="link-btn" onClick={() => setNamingRoute(true)} disabled={drawing.length < 2}>
-              Klar
+            <button className="link-btn" onClick={finishDrawing} disabled={drawing.length < 2}>
+              {editingRouteId ? 'Spara' : 'Klar'}
             </button>
-            <button className="link-btn" onClick={() => setDrawing(null)}>
+            <button className="link-btn" onClick={cancelDrawing}>
+              Avbryt
+            </button>
+          </div>
+        )}
+        {moving && (
+          <div className="map-banner" role="status">
+            <span>Dra platsen eller tryck där den ska vara</span>
+            <button className="link-btn" onClick={savePlaceMove}>
+              Spara
+            </button>
+            <button className="link-btn" onClick={() => setMoving(null)}>
               Avbryt
             </button>
           </div>
@@ -437,7 +508,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
             </LayersControl.Overlay>
             <LayersControl.Overlay name="GPX-rutter" checked>
               <LayerGroup>
-                {routeLines.map(({ route, lines }) => (
+                {routeLines.filter(({ route }) => route.id !== editingRouteId).map(({ route, lines }) => (
                   <LayerGroup key={route.id}>
                     {lines.map((line, i) => (
                       <Polyline key={i} positions={line} pathOptions={{ color: route.color, weight: 5, opacity: 0.85, dashArray: '10 8' }}>
@@ -460,7 +531,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
             </LayersControl.Overlay>
             <LayersControl.Overlay name="Platser" checked>
               <LayerGroup>
-                {places.map((p) => (
+                {places.filter((p) => p.id !== moving?.place.id).map((p) => (
                   <Marker key={p.id} position={[p.lat, p.lng]} icon={placeIcon}>
                     <Popup>
                       <div className="place-popup">
@@ -468,10 +539,15 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
                         {p.info && <Linkified text={p.info} />}
                         <span className="muted">Tillagd av {displayName(p.createdBy)}</span>
                         <span className="place-popup-actions">
-                          {p.createdBy === userName && (
-                            <button className="link-btn" onClick={() => setEditing(p)}>
-                              Ändra
-                            </button>
+                          {canEditPlace(p.createdBy) && (
+                            <>
+                              <button className="link-btn" onClick={() => setEditing(p)}>
+                                Ändra
+                              </button>
+                              <button className="link-btn" onClick={() => setMoving({ place: p, lat: p.lat, lng: p.lng })} disabled={busyOnMap}>
+                                Flytta
+                              </button>
+                            </>
                           )}
                           {canDelete(p.createdBy) && (
                             <button className="link-btn danger" onClick={() => removePlace(p)}>
@@ -520,9 +596,38 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
           {drawing && drawing.length > 1 && (
             <Polyline positions={drawing} pathOptions={{ color: ROUTE_COLORS[routes.length % ROUTE_COLORS.length], weight: 5, dashArray: '10 8' }} />
           )}
-          {drawing?.map((p, i) => (
-            <CircleMarker key={i} center={p} radius={5} pathOptions={{ color: '#fff', weight: 2, fillColor: '#14202b', fillOpacity: 1 }} />
-          ))}
+          {!namingRoute &&
+            drawing?.map((p, i) => (
+              <Marker
+                key={`${i}-${p[0]}-${p[1]}`}
+                position={p}
+                icon={vertexIcon}
+                draggable
+                eventHandlers={{
+                  dragend: (e) => {
+                    const ll = (e.target as L.Marker).getLatLng();
+                    setDrawing((d) => d && d.map((q, j) => (j === i ? [ll.lat, ll.lng] : q)));
+                  },
+                  click: () => setDrawing((d) => d && d.filter((_, j) => j !== i))
+                }}
+              />
+            ))}
+          {moving && (
+            <>
+              <PickPosition onPick={(lat, lng) => setMoving({ ...moving, lat, lng })} />
+              <Marker
+                position={[moving.lat, moving.lng]}
+                icon={placeIcon}
+                draggable
+                eventHandlers={{
+                  dragend: (e) => {
+                    const ll = (e.target as L.Marker).getLatLng();
+                    setMoving((m) => m && { ...m, lat: ll.lat, lng: ll.lng });
+                  }
+                }}
+              />
+            </>
+          )}
         </MapContainer>
       </div>
 
@@ -549,10 +654,10 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         )}
 
         <div className="tools">
-          <button onClick={() => setAdding(true)} disabled={adding || !!drawing}>
+          <button onClick={() => setAdding(true)} disabled={busyOnMap}>
             + Plats
           </button>
-          <button onClick={() => setDrawing([])} disabled={adding || !!drawing}>
+          <button onClick={() => setDrawing([])} disabled={busyOnMap}>
             Rita rutt
           </button>
           <button onClick={() => fileInput.current?.click()} disabled={uploading}>
@@ -631,6 +736,11 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
                     <span className="name">{route.name}</span>
                     <span className="muted">{displayName(route.createdBy)}</span>
                   </button>
+                  {canEditRoute(route) && (
+                    <button className="edit" onClick={() => editRoute(route)} disabled={busyOnMap}>
+                      Ändra
+                    </button>
+                  )}
                   {canDelete(route.createdBy) && (
                     <button className="remove" onClick={() => removeRoute(route)} aria-label={`Ta bort ${route.name}`}>
                       ×

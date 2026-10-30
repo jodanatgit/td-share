@@ -105,7 +105,7 @@ service cloud.firestore {
       }
 
       // Places marked on the map with a title and info. Anyone can add one while the event runs; the person who
-      // added it can edit it, and they or the event creator can delete it.
+      // added it and the event creator can edit, move and delete it.
       match /places/{placeId} {
         allow read: if isTD() && isRunning(eventId);
         allow create: if isTD()
@@ -119,9 +119,11 @@ service cloud.firestore {
           && request.resource.data.expireAt == event(eventId).endsAt;
         allow update: if isTD()
           && isRunning(eventId)
-          && isMe(resource.data.createdBy)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'info'])
-          && isPlaceText(request.resource.data);
+          && (isMe(resource.data.createdBy) || isMe(event(eventId).createdBy))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'info', 'lat', 'lng'])
+          && isPlaceText(request.resource.data)
+          && request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
+          && request.resource.data.lng is number && request.resource.data.lng >= -180 && request.resource.data.lng <= 180;
         allow delete: if isTD() && (isMe(resource.data.createdBy) || isMe(event(eventId).createdBy));
       }
 
@@ -132,7 +134,7 @@ service cloud.firestore {
         allow delete: if isTD() && isMe(event(eventId).createdBy);
       }
 
-      // Uploaded GPX routes and routes drawn on the map (parsed in the browser, src/gpx.ts). Never changed; deleted by uploader or event creator.
+      // Uploaded GPX routes and routes drawn on the map (GPX parsed in the browser, src/gpx.ts). Deleted by uploader or event creator.
       match /routes/{routeId} {
         allow read: if isTD() && isRunning(eventId);
         allow create: if isTD()
@@ -152,7 +154,19 @@ service cloud.firestore {
           && isMe(request.resource.data.createdBy)
           && request.resource.data.createdAt == request.time
           && request.resource.data.expireAt == event(eventId).endsAt;
-        allow update: if false;
+        // The uploader can reshape and rename their own route (the app offers it for drawn routes)
+        allow update: if isTD()
+          && isRunning(eventId)
+          && isMe(resource.data.createdBy)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'coords', 'breaks'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.coords is list
+          && request.resource.data.coords.size() >= 4
+          && request.resource.data.coords.size() <= 16004
+          && request.resource.data.breaks is list
+          && request.resource.data.breaks.size() <= 1000;
         allow delete: if isTD() && (isMe(resource.data.createdBy) || isMe(event(eventId).createdBy));
       }
     }

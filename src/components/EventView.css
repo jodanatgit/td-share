@@ -324,3 +324,22 @@
   gap: 10px;
   padding: 5px 0;
 }
+
+.vertex-marker {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #14202b;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.people .edit {
+  flex: none;
+  border: none;
+  background: none;
+  padding: 0 8px;
+  color: var(--accent-ink);
+  font-size: 14px;
+  text-decoration: underline;
+}
