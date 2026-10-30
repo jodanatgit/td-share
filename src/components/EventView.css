@@ -53,9 +53,140 @@
   font-size: 14px;
 }
 
-.event-map {
+.event-map-wrap {
+  position: relative;
   flex: 1;
   min-height: 0;
+}
+
+.event-map {
+  height: 100%;
+}
+
+.event-map-wrap.adding .leaflet-container {
+  cursor: crosshair;
+}
+
+.map-banner,
+.map-notice {
+  position: absolute;
+  z-index: 1000; /* above the map panes */
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #14202b;
+  color: #f6f4ef;
+  font-size: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.map-banner {
+  top: 12px;
+}
+
+.map-banner .link-btn {
+  color: #f5a04a;
+}
+
+.map-notice {
+  bottom: 12px;
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tools button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sheet-heading {
+  margin: 14px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.people .pin {
+  width: 10px;
+  height: 14px;
+  flex: none;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: #14202b;
+}
+
+.people .line {
+  width: 16px;
+  height: 4px;
+  flex: none;
+  border-radius: 2px;
+}
+
+.people li.with-action {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.people li.with-action > button:first-child {
+  flex: 1;
+  border-bottom: none;
+}
+
+.people .remove {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.place-marker {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+.place-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.place-popup strong {
+  font-size: 15px;
+}
+
+.place-popup .muted {
+  font-size: 12px;
+}
+
+.place-popup-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.linkified {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .event-sheet {
@@ -143,7 +274,7 @@
 .sheet-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 10px;
   font-size: 14px;
 }

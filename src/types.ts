@@ -23,3 +23,24 @@ export interface TrackPoint {
   lng: number;
   at: Date | null;
 }
+
+// A place someone marked on the map, with info (events/{id}/places)
+export interface Place {
+  id: string;
+  title: string;
+  info: string;
+  lat: number;
+  lng: number;
+  createdBy: string;
+}
+
+// An uploaded GPX file (events/{id}/routes), see src/gpx.ts for the coordinate layout
+export interface Route {
+  id: string;
+  name: string;
+  color: string;
+  coords: number[];
+  breaks: number[];
+  waypoints: { lat: number; lng: number; name: string }[];
+  createdBy: string;
+}

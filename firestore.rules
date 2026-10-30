@@ -24,6 +24,11 @@ service cloud.firestore {
       return request.time < event(eventId).endsAt;
     }
 
+    function isPlaceText(d) {
+      return d.title is string && d.title.size() > 0 && d.title.size() <= 80
+        && d.info is string && d.info.size() <= 2000;
+    }
+
     function isPosition(d) {
       return d.lat is number && d.lat >= -90 && d.lat <= 90
         && d.lng is number && d.lng >= -180 && d.lng <= 180
@@ -97,6 +102,51 @@ service cloud.firestore {
           && request.resource.data.expireAt == event(eventId).endsAt;
         allow update: if false;
         allow delete: if isTD() && (isMe(resource.data.userName) || isMe(event(eventId).createdBy));
+      }
+
+      // Places marked on the map with a title and info. Anyone can add one while the event runs; the person who
+      // added it can edit it, and they or the event creator can delete it.
+      match /places/{placeId} {
+        allow read: if isTD() && isRunning(eventId);
+        allow create: if isTD()
+          && isRunning(eventId)
+          && request.resource.data.keys().hasOnly(['title', 'info', 'lat', 'lng', 'createdBy', 'createdAt', 'expireAt'])
+          && isPlaceText(request.resource.data)
+          && request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
+          && request.resource.data.lng is number && request.resource.data.lng >= -180 && request.resource.data.lng <= 180
+          && isMe(request.resource.data.createdBy)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.expireAt == event(eventId).endsAt;
+        allow update: if isTD()
+          && isRunning(eventId)
+          && isMe(resource.data.createdBy)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'info'])
+          && isPlaceText(request.resource.data);
+        allow delete: if isTD() && (isMe(resource.data.createdBy) || isMe(event(eventId).createdBy));
+      }
+
+      // Uploaded GPX routes (parsed in the browser, src/gpx.ts). Never changed; deleted by uploader or event creator.
+      match /routes/{routeId} {
+        allow read: if isTD() && isRunning(eventId);
+        allow create: if isTD()
+          && isRunning(eventId)
+          && request.resource.data.keys().hasOnly(['name', 'color', 'coords', 'breaks', 'waypoints', 'createdBy', 'createdAt', 'expireAt'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.color is string
+          && request.resource.data.color.matches('#[0-9a-fA-F]{6}')
+          && request.resource.data.coords is list
+          && request.resource.data.coords.size() <= 16004
+          && request.resource.data.breaks is list
+          && request.resource.data.breaks.size() <= 1000
+          && request.resource.data.waypoints is list
+          && request.resource.data.waypoints.size() <= 200
+          && isMe(request.resource.data.createdBy)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.expireAt == event(eventId).endsAt;
+        allow update: if false;
+        allow delete: if isTD() && (isMe(resource.data.createdBy) || isMe(event(eventId).createdBy));
       }
     }
   }

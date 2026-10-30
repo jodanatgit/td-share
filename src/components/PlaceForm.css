@@ -1,0 +1,49 @@
+.place-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000; /* above the Leaflet map and its controls */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 16px;
+}
+
+.place-form {
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.place-form h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+
+.place-form input,
+.place-form textarea {
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px; /* 16px keeps iOS from zooming in */
+  resize: vertical;
+}
+
+.place-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+}
+
+@media (min-width: 600px) {
+  .place-form-overlay {
+    align-items: center;
+  }
+}

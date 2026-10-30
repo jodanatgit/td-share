@@ -1,8 +1,45 @@
 {
   "indexes": [],
   "fieldOverrides": [
-    { "collectionGroup": "events", "fieldPath": "expireAt", "ttl": true, "indexes": [] },
-    { "collectionGroup": "members", "fieldPath": "expireAt", "ttl": true, "indexes": [] },
-    { "collectionGroup": "points", "fieldPath": "expireAt", "ttl": true, "indexes": [] }
+    {
+      "collectionGroup": "events",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "members",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "points",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "places",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "routes",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "routes",
+      "fieldPath": "coords",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "routes",
+      "fieldPath": "waypoints",
+      "indexes": []
+    }
   ]
 }
