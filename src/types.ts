@@ -45,11 +45,19 @@ export interface Route {
   createdBy: string;
 }
 
-// "Johan kom fram till PT-PASS" (events/{id}/arrivals, written by functions/arrivals.js)
+// "Johan kom fram till PT-PASS", "Johan har klarat 3 km av Halvan" (events/{id}/arrivals, written by functions/arrivals.js)
 export interface Arrival {
   id: string;
   userName: string;
-  kind: 'place' | 'route';
+  kind: 'place' | 'route' | 'progress' | 'finish';
   targetName: string;
   at: Date | null;
+  // progress along a route ('progress' every km, 'finish' at the end)
+  km?: number;
+  coveredM?: number;
+  elapsedS?: number;
+  splitM?: number; // the latest km
+  splitS?: number;
+  remainingM?: number | null;
+  lengthM?: number;
 }

@@ -109,8 +109,39 @@ function DrawPoints({ onAdd }: { onAdd: (p: [number, number]) => void }) {
   return null;
 }
 
-const arrivalText = (a: Arrival) =>
-  a.kind === 'place' ? `${displayName(a.userName)} kom fram till ${a.targetName}` : `${displayName(a.userName)} nådde rutten ${a.targetName}`;
+const km = (m: number) => `${(m / 1000).toLocaleString('sv-SE', { maximumFractionDigits: 1 })} km`;
+
+const duration = (s: number) => {
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(h ? 2 : 1, '0');
+  const ss = String(Math.floor(s % 60)).padStart(2, '0');
+  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+};
+
+// Running and walking pace as min/km, anything faster (cycling, skiing downhill, driving) as km/h
+const pace = (m: number, s: number) => {
+  if (!m || !s) return '';
+  const kmh = (m / s) * 3.6;
+  return kmh > 20 ? `${Math.round(kmh)} km/h` : `${duration((s * 1000) / m)}/km`;
+};
+
+const arrivalText = (a: Arrival) => {
+  const who = displayName(a.userName);
+  switch (a.kind) {
+    case 'place':
+      return `${who} kom fram till ${a.targetName}`;
+    case 'progress': {
+      const parts = [`${who} har klarat ${a.km} km av ${a.targetName} på ${duration(a.elapsedS ?? 0)}`];
+      if (a.splitM && a.splitS) parts.push(`senaste km ${pace(a.splitM, a.splitS)}`);
+      if (a.remainingM != null && a.remainingM >= 100) parts.push(`${km(a.remainingM)} kvar`);
+      return parts.join(' · ');
+    }
+    case 'finish':
+      return `${who} är i mål på ${a.targetName}: ${km(a.coveredM ?? 0)} på ${duration(a.elapsedS ?? 0)} (${pace(a.coveredM ?? 0, a.elapsedS ?? 0)})`;
+    default:
+      return `${who} nådde rutten ${a.targetName}`;
+  }
+};
 
 const clock = (d: Date | null) => (d ? d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '');
 
@@ -199,7 +230,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
           setArrivals(
             snap.docs.map((d) => {
               const x = d.data();
-              return { id: d.id, userName: x.userName, kind: x.kind, targetName: x.targetName, at: x.at?.toDate() ?? null };
+              return { ...(x as Omit<Arrival, 'id' | 'at'>), id: d.id, at: x.at?.toDate() ?? null };
             })
           );
           // Pop up arrivals that happen while the map is open (not the ones already there when it opened)
@@ -211,8 +242,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
             .docChanges()
             .filter((c) => c.type === 'added')
             .forEach((c) => {
-              const x = c.doc.data();
-              flash(arrivalText({ id: c.doc.id, userName: x.userName, kind: x.kind, targetName: x.targetName, at: null }));
+              flash(arrivalText({ ...(c.doc.data() as Omit<Arrival, 'id' | 'at'>), id: c.doc.id, at: null }));
             });
         },
         (err) => console.error('arrivals listener failed:', err)
