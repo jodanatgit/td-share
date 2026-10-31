@@ -543,6 +543,24 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
                     {lines.map((line, i) => (
                       <Polyline key={i} positions={line} pathOptions={{ color: route.color, weight: 5, opacity: 0.85, dashArray: '10 8' }}>
                         <Tooltip sticky>{route.name}</Tooltip>
+                        <Popup>
+                          <div className="place-popup">
+                            <strong>{route.name}</strong>
+                            <span className="muted">Tillagd av {displayName(route.createdBy)}</span>
+                            <span className="place-popup-actions">
+                              {canEditRoute(route) && (
+                                <button className="link-btn" onClick={() => editRoute(route)} disabled={busyOnMap}>
+                                  Ändra
+                                </button>
+                              )}
+                              {canDelete(route.createdBy) && (
+                                <button className="link-btn danger" onClick={() => removeRoute(route)}>
+                                  Ta bort
+                                </button>
+                              )}
+                            </span>
+                          </div>
+                        </Popup>
                       </Polyline>
                     ))}
                     {route.waypoints.map((w, i) => (
@@ -772,8 +790,8 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
                     </button>
                   )}
                   {canDelete(route.createdBy) && (
-                    <button className="remove" onClick={() => removeRoute(route)} aria-label={`Ta bort ${route.name}`}>
-                      ×
+                    <button className="edit danger" onClick={() => removeRoute(route)} aria-label={`Ta bort ${route.name}`}>
+                      Ta bort
                     </button>
                   )}
                 </li>

@@ -343,3 +343,7 @@
   font-size: 14px;
   text-decoration: underline;
 }
+
+.people .edit.danger {
+  color: var(--danger);
+}
