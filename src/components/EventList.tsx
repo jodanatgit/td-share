@@ -14,7 +14,7 @@ interface EventListProps {
 
 const HOUR = 3600 * 1000;
 
-// How long a new event runs. The rules allow at most three days.
+// How long a new event runs. The rules allow at most seven days.
 const DURATIONS: { label: string; end: () => Date }[] = [
   { label: '2 timmar', end: () => new Date(Date.now() + 2 * HOUR) },
   { label: '4 timmar', end: () => new Date(Date.now() + 4 * HOUR) },
@@ -27,7 +27,8 @@ const DURATIONS: { label: string; end: () => Date }[] = [
     }
   },
   { label: '2 dagar', end: () => new Date(Date.now() + 48 * HOUR) },
-  { label: '3 dagar', end: () => new Date(Date.now() + 72 * HOUR) }
+  { label: '3 dagar', end: () => new Date(Date.now() + 72 * HOUR) },
+  { label: '7 dagar', end: () => new Date(Date.now() + 7 * 24 * HOUR) }
 ];
 
 const formatEnd = (d: Date) =>

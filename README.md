@@ -4,7 +4,7 @@ See where your Total Digital colleagues are during a workshop, conference or oth
 per event and shares their phone's GPS position; everyone in the event sees the others on a map, with tracks.
 
 - **Sign-in:** email link, verified `@totaldigital.se` addresses only (same as Morgonkartan, `src/auth.ts`).
-- **Events:** anyone can create one, running from now for 2 h up to 3 days. The creator can end it early,
+- **Events:** anyone can create one, running from now for 2 h up to 7 days. The creator can end it early,
   which deletes all positions and tracks at once. Events can't be extended.
 - **Privacy:** sharing is off until you tap *Dela min position*, stops when you tap *Sluta dela* or the event
   ends, and positions/tracks can't be read once the event has ended (`firestore.rules`). Firestore TTL on

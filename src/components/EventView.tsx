@@ -111,6 +111,14 @@ function DrawPoints({ onAdd }: { onAdd: (p: [number, number]) => void }) {
 
 const km = (m: number) => `${(m / 1000).toLocaleString('sv-SE', { maximumFractionDigits: 1 })} km`;
 
+// "idag 14:00", or with the date ("tis 17 nov. 14:00"): a weekday alone is ambiguous for a 7-day event,
+// which ends on the same weekday as it started
+const endLabel = (d: Date) => {
+  const time = d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return `idag ${time}`;
+  return `${d.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })} ${time}`;
+};
+
 const duration = (s: number) => {
   const h = Math.floor(s / 3600);
   const mm = String(Math.floor((s % 3600) / 60)).padStart(h ? 2 : 1, '0');
@@ -165,6 +173,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
   const [drawing, setDrawing] = useState<[number, number][] | null>(null); // points of a route being drawn
   const [namingRoute, setNamingRoute] = useState(false);
+  const [renamingRoute, setRenamingRoute] = useState<Route | null>(null);
   const [editingRouteId, setEditingRouteId] = useState<string | null>(null); // set when `drawing` reshapes a saved route
   const [moving, setMoving] = useState<{ place: Place; lat: number; lng: number } | null>(null);
   const [arrivals, setArrivals] = useState<Arrival[]>([]);
@@ -209,10 +218,11 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         (err) => console.error('members listener failed:', err)
       ),
       onSnapshot(
-        query(collection(db, `${base}/points`), orderBy('at'), limit(20000)),
+        // the newest points, so a long event (up to 7 days) never cuts off the latest part of the tracks
+        query(collection(db, `${base}/points`), orderBy('at', 'desc'), limit(20000)),
         (snap) =>
           setPoints(
-            snap.docs.map((d) => {
+            snap.docs.reverse().map((d) => {
               const x = d.data();
               return { userName: x.userName, lat: x.lat, lng: x.lng, at: x.at?.toDate() ?? null };
             })
@@ -401,6 +411,14 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
     setFocus({ points: pts, n: Date.now() });
   };
 
+  // The uploader can rename any of their routes, GPX ones too (firestore.rules allows the same)
+  const canRenameRoute = (r: Route) => r.createdBy === userName;
+  const renameRoute = async (name: string) => {
+    if (!renamingRoute) return;
+    await updateDoc(doc(db, `events/${eventId}/routes`, renamingRoute.id), { name });
+    setRenamingRoute(null);
+  };
+
   const canEditRoute = (r: Route) => r.createdBy === userName && r.breaks.length <= 1 && r.coords.length / 2 <= MAX_EDITABLE_POINTS;
 
   const savePlaceMove = async () => {
@@ -477,7 +495,7 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
         <div className="event-title">
           <strong>{event.name}</strong>
           <span>
-            slutar {event.endsAt.toDate().toLocaleString('sv-SE', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
+            slutar {endLabel(event.endsAt.toDate())}
           </span>
         </div>
         <button className="small-btn" onClick={share}>
@@ -548,6 +566,11 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
                             <strong>{route.name}</strong>
                             <span className="muted">Tillagd av {displayName(route.createdBy)}</span>
                             <span className="place-popup-actions">
+                              {canRenameRoute(route) && (
+                                <button className="link-btn" onClick={() => setRenamingRoute(route)}>
+                                  Byt namn
+                                </button>
+                              )}
                               {canEditRoute(route) && (
                                 <button className="link-btn" onClick={() => editRoute(route)} disabled={busyOnMap}>
                                   Ändra
@@ -784,6 +807,11 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
                     <span className="name">{route.name}</span>
                     <span className="muted">{displayName(route.createdBy)}</span>
                   </button>
+                  {canRenameRoute(route) && (
+                    <button className="edit" onClick={() => setRenamingRoute(route)} aria-label={`Byt namn på ${route.name}`}>
+                      Byt namn
+                    </button>
+                  )}
                   {canEditRoute(route) && (
                     <button className="edit" onClick={() => editRoute(route)} disabled={busyOnMap}>
                       Ändra
@@ -811,6 +839,15 @@ const EventView = ({ eventId, userName, onBack }: EventViewProps) => {
 
       {namingRoute && (
         <PlaceForm kind="route" onSave={(name) => saveDrawnRoute(name)} onCancel={() => setNamingRoute(false)} />
+      )}
+      {renamingRoute && (
+        <PlaceForm
+          key={renamingRoute.id}
+          kind="route"
+          initial={{ title: renamingRoute.name, info: '' }}
+          onSave={renameRoute}
+          onCancel={() => setRenamingRoute(null)}
+        />
       )}
       {(draft || editing) && (
         <PlaceForm

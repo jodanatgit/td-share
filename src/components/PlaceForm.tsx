@@ -32,7 +32,7 @@ const PlaceForm = ({ initial, kind = 'place', onSave, onCancel }: PlaceFormProps
   return (
     <div className="place-form-overlay" onClick={onCancel}>
       <form className="place-form" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
-        <h2>{kind === 'route' ? 'Ny rutt' : initial ? 'Ändra plats' : 'Ny plats'}</h2>
+        <h2>{kind === 'route' ? (initial ? 'Byt namn på rutten' : 'Ny rutt') : initial ? 'Ändra plats' : 'Ny plats'}</h2>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}

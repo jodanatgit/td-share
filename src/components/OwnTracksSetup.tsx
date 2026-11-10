@@ -33,10 +33,40 @@ const configFor = ({ username, password }: Credentials) => ({
 
 const toBase64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
+// iPadOS reports itself as a Mac, so also look for a touch screen
+const isIOS = () =>
+  /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// One field of the manual settings, with a button that copies it (no retyping a long URL or password)
+const CopyField = ({ label, value }: { label: string; value: string }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error('Could not copy:', err); // the value is still selectable by hand
+    }
+  };
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd>
+        <span className="ot-value">{value}</span>
+        <button type="button" className="ot-copy" onClick={copy}>
+          {copied ? 'Kopierat' : 'Kopiera'}
+        </button>
+      </dd>
+    </>
+  );
+};
+
 const OwnTracksSetup = ({ onBack }: { onBack: () => void }) => {
   const [creds, setCreds] = useState<Credentials | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [ios] = useState(isIOS);
 
   const create = async () => {
     setBusy(true);
@@ -93,9 +123,22 @@ const OwnTracksSetup = ({ onBack }: { onBack: () => void }) => {
             </button>
           )}
         </li>
+        {ios && (
+          <li>
+            <strong>Tillåt inställningar via länk</strong>
+            <span>
+              På iPhone tar OwnTracks bara emot inställningar från en länk om du har tillåtit det. Öppna OwnTracks →
+              Inställningar, slå på att appen får läsa in inställningar från länkar och filer (extern konfiguration),
+              och bekräfta. Det behövs bara en gång. Du kan stänga av det igen när allt fungerar.
+            </span>
+          </li>
+        )}
         <li>
           <strong>Öppna dem i OwnTracks</strong>
-          <span>Gör det på telefonen. Godkänn sedan att OwnTracks får använda platsen "Alltid".</span>
+          <span>
+            Gör det på telefonen. Godkänn sedan att OwnTracks får använda platsen "Alltid".
+            {ios && ' Händer ingenting i OwnTracks? Kontrollera steget ovan, eller fyll i för hand nedan.'}
+          </span>
           {creds && (
             <a className="primary ot-open" href={link}>
               Öppna i OwnTracks
@@ -111,14 +154,13 @@ const OwnTracksSetup = ({ onBack }: { onBack: () => void }) => {
       {creds && (
         <details className="ot-manual">
           <summary>Fungerade inte länken? Fyll i för hand</summary>
-          <p className="muted">OwnTracks → Inställningar: läge HTTP, och:</p>
+          <p className="muted">
+            OwnTracks → Inställningar: välj läget HTTP{ios ? ', slå på Authentication' : ''} och kopiera in:
+          </p>
           <dl>
-            <dt>URL</dt>
-            <dd>{endpoint()}</dd>
-            <dt>Användarnamn</dt>
-            <dd>{creds.username}</dd>
-            <dt>Lösenord</dt>
-            <dd>{creds.password}</dd>
+            <CopyField label="URL" value={endpoint()} />
+            <CopyField label={ios ? 'UserID (användarnamn)' : 'Användarnamn'} value={creds.username} />
+            <CopyField label="Lösenord" value={creds.password} />
           </dl>
           <p className="muted">Lösenordet visas bara nu.</p>
         </details>

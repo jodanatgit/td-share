@@ -63,7 +63,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.endsAt is timestamp
         && request.resource.data.endsAt > request.time
-        && request.resource.data.endsAt <= request.time + duration.value(73, 'h')
+        && request.resource.data.endsAt <= request.time + duration.value(169, 'h')
         && request.resource.data.expireAt == request.resource.data.endsAt;
       allow update: if isTD()
         && isMe(resource.data.createdBy)

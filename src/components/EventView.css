@@ -146,6 +146,7 @@
 
 .people li.with-action > button:first-child {
   flex: 1;
+  min-width: 0; /* the name shrinks, not the Byt namn / Ändra / Ta bort buttons */
   border-bottom: none;
 }
 
